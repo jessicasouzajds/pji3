@@ -16,7 +16,10 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks{
       Serial.printf("Advertised Device: %s\n", advertisedDevice.getName().c_str());
       Serial.printf("Address: %s\n", advertisedDevice.getAddress().toString().c_str());
       Serial.printf("RSSI: %d\n", advertisedDevice.getRSSI());
-//      Serial.printf("TxPower: %d\n", d.getTXPower());
+      Serial.printf("Payload: %d\n", advertisedDevice.getPayload());
+      Serial.printf("ServiceData: %2x\n", advertisedDevice.getServiceData());
+//      Serial.printf("ManufacturerData: %2x\n", advertisedDevice.getManufacturerData());
+      
     #endif
     }
 };
