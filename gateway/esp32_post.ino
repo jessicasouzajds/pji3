@@ -7,7 +7,7 @@ const char* ssid = "rede-jessica";
 const char* password =  "jessicarede";
  
 void setup() {
- 
+   
   Serial.begin(115200);
   delay(4000);   //Delay needed before calling the WiFi.begin
  
