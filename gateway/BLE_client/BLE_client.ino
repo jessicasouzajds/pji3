@@ -6,16 +6,17 @@ static BLEUUID serviceUUID("0000ffe0-0000-1000-8000-00805f9b34fb");
 // Característica associada ao serviço que estamos interessados
 static BLEUUID    charUUID("0000ffe1-0000-1000-8000-00805f9b34fb");
 
-static BLEAddress *pServerAddress;
+static BLEAddress *pServerAddress; 
 static boolean doConnect = false;
 static boolean connected = false;
 static BLERemoteCharacteristic* pRemoteCharacteristic;
+//static boolean notify = false;
 
-static void notifyCallback(
-  BLERemoteCharacteristic* pBLERemoteCharacteristic,
-  uint8_t* pData,
-  size_t length,
-  bool isNotify) {
+struct Desc{
+    BLEClient*  pClient  = BLEDevice::createClient();
+}aux;
+
+static void notifyCallback( BLERemoteCharacteristic* pBLERemoteCharacteristic, uint8_t* pData, size_t length, bool isNotify) {
     Serial.print("Notificação recebida de: ");
     Serial.println(pBLERemoteCharacteristic->getUUID().toString().c_str());
     Serial.print("Tamanho da mensagem: ");
@@ -31,6 +32,9 @@ static void notifyCallback(
     Serial.print("Temperatura: ");
     Serial.print(dado[1]);
     Serial.println(" *C ");
+
+    Serial.println("VAI DESCONECTAR AGORA");
+    aux.pClient->disconnect();
 }
 
 bool connectToServer(BLEAddress pAddress) {
@@ -58,7 +62,14 @@ bool connectToServer(BLEAddress pAddress) {
     }
     Serial.println("Característica encontrada!");
     // callback para cada notificação enviada pelo dispositivo
-    pRemoteCharacteristic->registerForNotify(notifyCallback);
+    aux.pClient = pClient;
+    doConnect = false;
+    pRemoteCharacteristic->registerForNotify(notifyCallback); 
+//    while(notify == false) delay(3000);  
+//    notify = false;
+//    pClient->disconnect();
+
+//    desconectar(pClient);
 }
 
 class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
@@ -76,11 +87,15 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
     }
     else Serial.println("ServiceUUID inválido!!! Ignorando dispositivo.");
   }
+//
 };
 
 void setup() {
   Serial.begin(115200);
   Serial.println("Iniciando cliente BLE...");
+}
+
+void loop() {
   BLEDevice::init("");
 
   BLEScan* pBLEScan = BLEDevice::getScan();
@@ -89,14 +104,11 @@ void setup() {
   pBLEScan->setActiveScan(true);
   //Inicia scan BLE por 30 segundos
   pBLEScan->start(30);
-}
-
-void loop() {
+  
   if (doConnect == true) {
-    if (connectToServer(*pServerAddress)) {
-      Serial.println("Conectado com dispositivo BLE");
-      connected = true;
-    } else Serial.println("Falha na conexão");
+    if (!connectToServer(*pServerAddress)) {
+      Serial.println("Falha na conexão");
+    }
     doConnect = false;
   }
   delay(1000);
