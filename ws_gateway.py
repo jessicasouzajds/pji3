@@ -22,7 +22,7 @@ class ws_gateway():
 		self.app = Flask(__name__)
 		self.app.env = 'development'
 		self.app.add_url_rule('/save_data', view_func=self.save_data, methods=['POST'])
-		self.app.run(debug=True)
+		self.app.run(host="0.0.0.0", debug=True)
 
 	def save_data(self): #post	
 		request_data = request.get_json()
