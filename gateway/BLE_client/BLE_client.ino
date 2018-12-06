@@ -5,6 +5,13 @@
 #include "BLEDevice.h"
 #define BACKOFF_TIME 20000
 
+hw_timer_t *timer = NULL; //faz o controle do temporizador (interrupção por tempo)
+//callback do watchdog
+void IRAM_ATTR resetModule(){
+    ets_printf("WATCHDOG ATIVADO, REINICIANDO...\n"); //imprime no log
+    esp_restart_noos(); //reinicia o chip
+}
+
 // Serviço remoto que se deseja conectar
 static BLEUUID serviceUUID("0000ffe0-0000-1000-8000-00805f9b34fb");
 // Característica associada ao serviço que estamos interessados
@@ -36,6 +43,7 @@ static void notifyCallback(BLERemoteCharacteristic* pBLERemoteCharacteristic, ui
     Serial.print(pData[1]);
     Serial.println(" *C ");
     aux.leu = true;
+    timerWrite(timer, 0); //reseta o temporizador (alimenta o watchdog) 
     aux.pClient->disconnect();
 //    delay(2000);
 }
@@ -47,7 +55,7 @@ bool verifica_conexao(){
     if((current_mac.equals(last_mac))){
 //      current_time = millis();
       long int tempo = current_time - last_time;
-      if (tempo < BACKOFF_TIME){ // se houve um novo anuncio do mesmo beacon em menos de 10 segundos
+      if (tempo < BACKOFF_TIME){ // se houve um novo anuncio do mesmo beacon em menos de BACKOFF_TIME segundos
         Serial.print("MUITO CEDO, IGNORANDO: ");
         Serial.println(aux.advertisedDevice.getName().c_str());
         Serial.print("Tempo em espera: ");
@@ -55,7 +63,7 @@ bool verifica_conexao(){
         Serial.println(" segundos");
         aux._delay = true;
         return false;
-      }else{  // se ja se passaram os 10 segundos
+      }else{  // se ja se passaram os BACKOFF_TIME segundos
         last_time = current_time;
         Serial.print("Dispositivo conectado: ");
         Serial.println(aux.advertisedDevice.getName().c_str());
@@ -126,15 +134,32 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 
 void setup() {
   Serial.begin(115200);
-  BLEDevice::init("");
-
+  //---------------------------------------------------------------------------
+  //CONFIGURACAO DO WATCHDOG
+  //---------------------------------------------------------------------------
+  timer = timerBegin(0, 80, true); //timerID 0, div 80
+  
+  //timer, callback, interrupção de borda
+  timerAttachInterrupt(timer, &resetModule, true);
+  
+  //timer, tempo (us), repetição
+  timerAlarmWrite(timer, 30000000, true);
+  timerAlarmEnable(timer); //habilita a interrupção 
+  Serial.println("Watchdog configurado!");
+  delay(100);
+  Serial.println("Iniciando Scanner BLE");
+  //---------------------------------------------------------------------------
+  // CONFIGURACAO DO SCANNER BLE
+  //---------------------------------------------------------------------------
   // Retrieve a Scanner and set the callback we want to use to be informed when we
   // have detected a new device.  Specify that we want active scanning and start the
   // scan to run for 30 seconds.
+  BLEDevice::init("");
   BLEScan* pBLEScan = BLEDevice::getScan();
   pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
   pBLEScan->setActiveScan(true);
   pBLEScan->start(30);
+  //---------------------------------------------------------------------------
 } // End of setup.
 
 
