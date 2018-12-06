@@ -3,7 +3,7 @@
  */
 
 #include "BLEDevice.h"
-#define BACKOFF_TIME 15000
+#define BACKOFF_TIME 20000
 
 // Serviço remoto que se deseja conectar
 static BLEUUID serviceUUID("0000ffe0-0000-1000-8000-00805f9b34fb");
@@ -19,6 +19,7 @@ struct Disp_BLE{
     BLEAddress *pServerAddress;
     BLEAdvertisedDevice advertisedDevice;
     boolean leu = false;
+    boolean _delay = false;
 }aux;
 
 static long int last_time = 0, current_time= 0;
@@ -44,7 +45,7 @@ bool verifica_conexao(){
     current_mac = aux.pServerAddress->toString().c_str();
     
     if((current_mac.equals(last_mac))){
-      current_time = millis();
+//      current_time = millis();
       long int tempo = current_time - last_time;
       if (tempo < BACKOFF_TIME){ // se houve um novo anuncio do mesmo beacon em menos de 10 segundos
         Serial.print("MUITO CEDO, IGNORANDO: ");
@@ -52,11 +53,13 @@ bool verifica_conexao(){
         Serial.print("Tempo em espera: ");
         Serial.print(tempo/1000);
         Serial.println(" segundos");
+        aux._delay = true;
         return false;
       }else{  // se ja se passaram os 10 segundos
         last_time = current_time;
         Serial.print("Dispositivo conectado: ");
         Serial.println(aux.advertisedDevice.getName().c_str());
+        aux._delay = false;
         return true;
       }
     }else{ // se o dispositivo que se conectou não é o mesmo que o anterior
@@ -64,6 +67,7 @@ bool verifica_conexao(){
         Serial.println(aux.advertisedDevice.getName().c_str());
         last_mac = current_mac;
         last_time = current_time;
+        aux._delay = false;
         return true;
      }
 }
@@ -108,6 +112,7 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
     if (advertisedDevice.haveServiceUUID() && advertisedDevice.getServiceUUID().equals(serviceUUID)) {
 
       advertisedDevice.getScan()->stop();
+      current_time = millis();
 
       pServerAddress = new BLEAddress(advertisedDevice.getAddress());
       aux.pServerAddress = pServerAddress;
@@ -148,8 +153,8 @@ void loop() {
   // aqui deve verificar se uma nova informacao foi recebida (USAR AUX.LEU)
   // e a conexao BLE é fehcada, aqui que tera que ser chamada uma
   // funcao para mandar infos via Wi-Fi
-  
-    delay(3000);
+    if (aux._delay == true) delay(500);
+    else delay(3000);
     
     aux.leu = false;
     BLEScan* pBLEScan = BLEDevice::getScan();
